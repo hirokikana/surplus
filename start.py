@@ -11,27 +11,41 @@ import csv
 import json
 import datetime
 
-
-
 class CashBookAccess():
     def get_all(self):
         result = self.__to_array(session.query(CashBook).
                                  all())
         return json.dumps(result)
+
+    def hoge(self, x):
+        x.update({'expense':x['expense'] * rate})
+        return x
     
     def find_by_user_id(self, user_id):
-        total_result = []
-        for row in session.query(BurdenRate).filter(BurdenRate.user_id == user_id).all():
-            rate = row.rate / 100.0
-            result.append(self.__to_array(session.query(CashBook).
-                                          filter(CashBook.item.like('%%%s%%' % row.item_string)).
-                                          all()),
-                          lambda x:x.update({'expense':x['expense'] * rate})
-            )
+        result = []
+        for burden_rate_row in session.query(BurdenRateString).filter(BurdenRateString.user_id == user_id).all():
+            rate = burden_rate_row.rate / 100.0
+            for row in self.__to_array(session.query(CashBook).
+                                       filter(CashBook.item.like('%%%s%%' % burden_rate_row.item_string)).
+                                       all()
+            ):
+                row['expense'] *= rate
+                result.append(row)
         return json.dumps(result)
 
     def find_by_user_id_and_date_range(self, user_id, start_date, end_date):
-        pass
+        result = []
+        for burden_rate_row in session.query(BurdenRateString).filter(BurdenRateString.user_id == user_id).all():
+            rate = burden_rate_row.rate / 100.0
+            for row in self.__to_array(session.query(CashBook).
+                                       filter(CashBook.item.like('%%%s%%' % burden_rate_row.item_string)).
+                                       filter(CashBook.use_date >= start_date).
+                                       filter(CashBook.use_date < end_date).
+                                       all()
+            ):
+                row['expense'] *= rate
+                result.append(row)
+        return json.dumps(result)
 
     def find_by_date_range(self, start_date, end_date):
         result = self.__to_array(session.query(CashBook).
@@ -40,16 +54,16 @@ class CashBookAccess():
                                  all())
         return json.dumps(result)
 
-    def __to_array(self, rows, func=lambda x:x):
+    def __to_array(self, rows):
         result = []
         for row in rows:
-            result.append(func({
+            result.append({
                 'id':row.id,
                 'use_date':row.use_date.isoformat(),
                 'item':row.item,
                 'expense':row.expense,
                 'income':row.income
-            }))
+            })
         return result
 
 
@@ -74,55 +88,31 @@ def get_cashbook():
 
 @route('/api/v1/cashbook/<year:int>')
 def cashbook_find_by_year(year):
-    result = []
     start_date = '%d-01' % (year)
     end_date = '%d-01' % (year + 1)
-    for row in session.query(CashBook).filter(CashBook.use_date >= start_date).filter(CashBook.use_date < end_date).all():
-        result.append({'use_date':row.use_date.isoformat(), 'item':row.item, 'expense':row.expense, 'income':row.income})
-    return template('{{!json}}', json=json.dumps(result))
+    return template('{{!json}}', json=CashBookAccess().find_by_date_range(start_date, end_date))
 
 @route('/api/v1/cashbook/<year:int>/<month:int>')
 def cashbook_find_by_month(year, month):
-    result = []
     start_date = '%d-%02d' % (year, month)
     end_date = '%d-%02d' % (year, month + 1)
-    for row in session.query(CashBook).filter(CashBook.use_date >= start_date).filter(CashBook.use_date < end_date).all():
-        result.append({'use_date':row.use_date.isoformat(), 'item':row.item, 'expense':row.expense, 'income':row.income})
-    return template('{{!json}}', json=json.dumps(result))
+    return template('{{!json}}', json=CashBookAccess().find_by_date_range(start_date, end_date))
 
 @route('/api/v1/user/<user_id:int>')
 def cashbook_find_by_user(user_id):
-    result = []
-    for row1 in session.query(BurdenRate).filter(BurdenRate.user_id == user_id).all():
-        rate = row1.rate / 100.0
-        item_string = row1.item_string
-        for row in session.query(CashBook).filter(CashBook.item.like('%%%s%%' % item_string)).all():
-            result.append({'use_date':row.use_date.isoformat(), 'item':row.item, 'expense':row.expense * rate, 'income':row.income})
-    return template('{{!json}}', json=json.dumps(result))
+    return template('{{!json}}', json=CashBookAccess().find_by_user_id(user_id))
 
 @route('/api/v1/user/<user_id:int>/<year:int>')
 def cashbook_find_by_user_year(user_id, year):
-    result = []
-    for row1 in session.query(BurdenRate).filter(BurdenRate.user_id == user_id).all():
-        rate = row1.rate / 100.0
-        item_string = row1.item_string
-        start_date = '%d-01' % (year)
-        end_date = '%d-01' % (year + 1)
-        for row in session.query(CashBook).filter(CashBook.item.like('%%%s%%' % item_string)).filter(CashBook.use_date >= start_date).filter(CashBook.use_date < end_date).all():
-            result.append({'use_date':row.use_date.isoformat(), 'item':row.item, 'expense':row.expense * rate, 'income':row.income})
-    return template('{{!json}}', json=json.dumps(result))
+    start_date = '%d-01' % (year)
+    end_date = '%d-01' % (year + 1)
+    return template('{{!json}}', json=CashBookAccess().find_by_user_id_and_date_range(user_id, start_date, end_date))
 
 @route('/api/v1/user/<user_id:int>/<year:int>/<month:int>')
 def cashbook_find_by_user_year_month(user_id, year, month):
-    result = []
-    for row1 in session.query(BurdenRate).filter(BurdenRate.user_id == user_id).all():
-        rate = row1.rate / 100.0
-        item_string = row1.item_string
-        start_date = '%d-%02d' % (year, month)
-        end_date = '%d-%02d' % (year, month+1)
-        for row in session.query(CashBook).filter(CashBook.item.like('%%%s%%' % item_string)).filter(CashBook.use_date >= start_date).filter(CashBook.use_date < end_date).all():
-            result.append({'use_date':row.use_date.isoformat(), 'item':row.item, 'expense':row.expense * rate, 'income':row.income})
-    return template('{{!json}}', json=json.dumps(result))
+    start_date = '%d-%02d' % (year, month)
+    end_date = '%d-%02d' % (year, month+1)
+    return template('{{!json}}', json=CashBookAccess().find_by_user_id_and_date_range(user_id, start_date, end_date))
 
 
 Base = declarative_base()
