@@ -114,6 +114,18 @@ def cashbook_find_by_user_year_month(user_id, year, month):
     end_date = '%d-%02d' % (year, month+1)
     return template('{{!json}}', json=CashBookAccess().find_by_user_id_and_date_range(user_id, start_date, end_date))
 
+@route('/api/v1/burdenrate/user/<user_id:int>', method='POST')
+def set_burden_rate(user_id):
+    item_string = request.forms.get('item_string')
+    rate = request.forms.get('rate')
+    session.add(BurdenRateString(item_string=item_string, rate=rate, user_id=user_id))
+    return template('{"result":"ok"}')
+    
+@route('/api/v1/burdenrate/user/<user_id:int>')
+def get_burden_rate(user_id):
+    result = session.query(BurdenRateString).filter(BurdenRateString.user_id == user_id).all()
+    return template('{{!json}}', json=json.dumps([{'id':x.id,'item_string':x.item_string,'rate':x.rate} for x in result]))
+
 
 Base = declarative_base()
 
