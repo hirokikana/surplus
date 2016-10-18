@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import sys
 sys.path.append('libs')
-from bottle import route,run,template,request,static_file
+from bottle import route,run,template,request,static_file,view
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, String, Date
@@ -67,7 +67,7 @@ class CashBookAccess():
 
 @route('/')
 def index():
-    return static_file('index.html', root='./static')
+    return template('index', title="TOP")
 
 @route('/api/v1/cashbook', method='POST')
 def post_cashbook():
@@ -141,6 +141,10 @@ def get_burden_rate(user_id):
     session.commit()
     result = [{'id':x.id,'item_string':x.item_string,'rate':x.rate} for x in result_string] + [{'id':x.id,'item_id':x.item_id,'rate':x.rate} for x in result_item_id]
     return template('{{!json}}', json=json.dumps(result))
+
+@route('/static/<filepath:path>')
+def static(filepath):
+    return static_file(filepath, root="./static")
 
 
 Base = declarative_base()
