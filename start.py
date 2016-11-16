@@ -152,41 +152,54 @@ Base = declarative_base()
 class CashBook(Base):
     __tablename__ = 'cashbook'
     id = Column(Integer, primary_key=True)
-    payment_type = Column(String)
+    payment_type = Column(String(1024))
     payment_id = Column(Integer)
     use_date = Column(Date)
-    item = Column(String)
+    item = Column(String(1024))
     income = Column(Integer, default=0)
     expense = Column(Integer, default=0)
 
 class User(Base):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String(1024))
 
 class BurdenRateString(Base):
     __tablename__ = 'burdenrate_string'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
-    item_string = Column(String)
+    item_string = Column(String(1024))
     rate = Column(Integer)
 
 class BurdenRateItemId(Base):
     __tablename__ = 'burdenrate_item_id'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
-    item_id = Column(String)
+    item_id = Column(String(1024))
     rate = Column(Integer)
 
 if __name__ == "__main__":
-    engine = create_engine('sqlite://', echo=True)
+    from ConfigParser import SafeConfigParser
+    parser = SafeConfigParser()
+    parser.read("surplus.conf")
+
+    server_port = int(parser.get('server','port'))
+    
+    db_uri = '%s://%s:%s@%s/%s?charset=utf8' % (parser.get('database','engine'),
+                                   parser.get('database','user'),
+                                   parser.get('database','password'),
+                                   parser.get('database','host'),
+                                   parser.get('database','name'))
+                          
+    engine = create_engine(db_uri, echo=True, encoding='utf-8')
     session = sessionmaker(bind=engine)()
     Base.metadata.create_all(engine)
 
+    
     if (1): # test
         session.add(User(name='hiroki'))
         session.add(BurdenRateString(user_id=1, item_string='AMAZON', rate=50))
         session.add(BurdenRateString(user_id=1, item_string=u'東京電力', rate=50))
         session.commit()
         
-    run(port=8080, debug=True)
+    run(port=server_port, debug=True)
