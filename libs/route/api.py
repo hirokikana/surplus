@@ -1,5 +1,6 @@
 from application import app
 from bottle import route,template
+from bottle import response
 from cashbook import CashBookAccess
 import csv
 import datetime
@@ -22,6 +23,7 @@ def post_cashbook():
 
 @app.route('/api/v1/cashbook')
 def get_cashbook():
+    response.content_type = 'application/json'
     session = app.config['session']
     return template('{{!json}}', json=CashBookAccess().get_all())
 

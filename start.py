@@ -15,7 +15,6 @@ if __name__ == "__main__":
     server_config = config.get_server_conf()
     db_uri = config.get_db_uri()
     engine = create_engine(db_uri, echo=True, encoding='utf-8')
-    import pdb;pdb.set_trace()
     Base.metadata.create_all(engine)
 
     import route.static
